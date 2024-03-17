@@ -1,0 +1,40 @@
+﻿<Telma file version 24.4.249.0+c0a3d8df877a35a00cfc4b5ab48b88751f5a67f1 Time 03/17/2024 06:29:21 />
+9
+-1	-1	0
+0.7000000000000001	-0.7000000000000001	0
+0.6000000000000001	0.30000000000000004	0
+-0.5	-0.1	0
+2	-1	0
+2	1	0
+-1	1	0
+1.362904109589041	-0.4084109589041094	0
+-0.12	-0.29	0
+16
+Triangle 1 0 2 3 0 4 1
+Triangle 1 0 2 3 1 8 0
+Triangle 1 0 2 3 2 6 3
+Triangle 1 0 2 3 3 8 2
+Triangle 1 0 2 3 7 4 5
+Triangle 1 0 2 3 5 2 7
+Triangle 1 0 2 3 6 2 5
+Triangle 1 0 2 3 0 3 6
+Triangle 1 0 2 3 7 2 1
+Triangle 1 0 2 3 1 4 7
+Triangle 1 0 2 3 2 8 1
+Triangle 1 0 2 3 0 8 3
+Segment 0 -1 2 2 4 0
+Segment 0 -1 3 2 5 4
+Segment 0 -1 4 2 6 5
+Segment 0 -1 5 2 0 6
+2
+0 Empty
+2 metal
+6
+0 Not Boundary
+1 Internal Boundary
+2 Bottom Boundary
+3 Right Boundary
+4 Top Boundary
+5 Left Boundary
+0
+0

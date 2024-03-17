@@ -2,10 +2,10 @@
 
 public class FirstCondition
 {
-   public PointRZ point { get; }
+   public Point2D point { get; }
    public int NodeNumber { get; }
 
-   public FirstCondition(PointRZ node, int nodeNumber)
+   public FirstCondition(Point2D node, int nodeNumber)
    {
       point = node;
       NodeNumber = nodeNumber;

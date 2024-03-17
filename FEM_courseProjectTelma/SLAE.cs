@@ -30,6 +30,7 @@ public class Solver
       catch(Exception ex)
       {
          Console.WriteLine(ex.Message);
+            return;
       }
 
       double vectorNorm = vector.Norm();

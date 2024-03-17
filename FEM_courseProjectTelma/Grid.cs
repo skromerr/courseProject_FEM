@@ -1,36 +1,41 @@
 ﻿using System.Collections;
 using System.Drawing;
+using System.Runtime.CompilerServices;
 
 namespace CourseProject;
 
+public class Element
+{
+    public int[] Nodes { get; set; } = new int[6];
+
+    public int MaterialNumber { get; set; }
+
+    public int this[int i]
+    {
+        get => Nodes[i]; set => Nodes[i] = value;
+    }
+}
+
 public struct Material
 {
-   public double Lambda { get; init; }
-   public double Sigma { get; init; }
+   public double J { get; init; }
    public string Name { get; init; }
 
-   public Material(double lambda, double sigma, string name)
+   public Material(double j, string name)
    {
-      Lambda = lambda;
-      Sigma = sigma;
+      J = j;
       Name = name;
    }
 }
 
 public class Grid
 {
-   private double tStart;
-   private double tEnd;
-   private int tSteps;
-   private double tStep;
-
-   public List<PointRZ> Nodes { get; set; }
-   public double[] Time { get; }
-   public int[][] Elements { get; }
+   public List<Point2D> Nodes { get; set; }
+   public Element[] Elements { get; }
    public Material[] Materials { get; }
    public HashSet<(int, int[])>[] Boundaries { get; set; }
 
-   public Grid(string spaceGridPath, string timeGridPath)
+   public Grid(string spaceGridPath)
    {
       (int[], string)[] boundaries;
       using (StreamReader sr = new (spaceGridPath))
@@ -42,27 +47,27 @@ public class Grid
          for (int i = 0; i < Materials.Length; i++)
          {
             data = sr.ReadLine()!.Split(" ").ToArray();
-            Materials[i] = new Material(Convert.ToDouble(data[0]), Convert.ToDouble(data[1]), data[2]);
+            Materials[i] = new Material(Convert.ToDouble(data[0]), data[1]);
          }
 
          data = sr.ReadLine()!.Split().ToArray();
          var nodesCount = Convert.ToInt32(data[0]);
-         Nodes = new List<PointRZ>();
+         Nodes = new List<Point2D>();
          for (int i = 0; i < nodesCount; i++)
          {
             data = sr.ReadLine()!.Split(" ").ToArray();
-            Nodes.Add(new PointRZ(Convert.ToDouble(data[0]), Convert.ToDouble(data[1])));
+            Nodes.Add(new Point2D(Convert.ToDouble(data[0]), Convert.ToDouble(data[1])));
          }
 
          data = sr.ReadLine()!.Split().ToArray();
-         Elements = new int[Convert.ToInt32(data[0])].Select(_ => new int[7]).ToArray();
+         Elements = new Element[Convert.ToInt32(data[0])].Select(_ => new Element()).ToArray();
          for (int i = 0; i < Elements.Length; i++)
          {
             data = sr.ReadLine()!.Split(" ").ToArray();
             Elements[i][0] = Convert.ToInt32(data[0]);
             Elements[i][1] = Convert.ToInt32(data[1]);
             Elements[i][2] = Convert.ToInt32(data[2]);
-            Elements[i][6] = Convert.ToInt32(data[3]);
+            Elements[i].MaterialNumber = Convert.ToInt32(data[3]);
          }
 
          data = sr.ReadLine()!.Split().ToArray();
@@ -75,27 +80,6 @@ public class Grid
             boundaries[i].Item1[2] = Convert.ToInt32(data[1]);
             boundaries[i].Item2 = data[2];
          }
-      }
-
-      using (StreamReader sr = new(timeGridPath))
-      {
-         string[] data;
-
-         data = sr.ReadLine()!.Split(" ").ToArray();
-         tStart = Convert.ToDouble(data[0]);
-         tEnd = Convert.ToDouble(data[1]);
-         tSteps = Convert.ToInt32(data[2]);
-      }
-
-      tStep = (tEnd - tStart) / tSteps;
-      Time = new double[tSteps + 1];
-
-      Time[0] = tStart;
-      Time[^1] = tEnd;
-
-      for (int i = 1; i < tSteps; i++) 
-      {
-         Time[i] = tStart + i * tStep;
       }
 
       Boundaries = new HashSet<(int, int[])>[4].Select(_ => new HashSet<(int, int[])>()).ToArray();
@@ -162,4 +146,9 @@ public class Grid
          };
       }
    }
+}
+
+public static class PhysicsConstants
+{
+    public const double VacuumPermeability = 4.0 * Math.PI * 1E-07;
 }
