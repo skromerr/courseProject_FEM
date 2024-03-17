@@ -4,18 +4,31 @@ Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-U
 string spaceGridPath = "grid.txt";
 string telmaGridTxt = "test.txt";
 GridConverter gc = new GridConverter(telmaGridTxt, spaceGridPath);
-gc.ConvertGrid();
-//Grid grid = new(spaceGridPath);
-//FEM fem = new(grid);
-//fem.Compute();
+double radius = 1.3;
+double height = 0.1;
+double width = 0.1;
+double current = 1e10;
+gc.MakeGrid(radius, height, width, current);
+Grid grid = new(spaceGridPath);
+FEM fem = new(grid);
+fem.Compute();
 ////fem.PrintSolution();
 
 
 
 ////Console.WriteLine();
-//Point2D points = new Point2D(2, 2.8);
-//double res = fem.XValueAtPoint(points);
-//Console.WriteLine($"Значение функции в точке ({points.X};{points.Y}) равно {res}.");
+PointRZ points = new PointRZ(0.7, 0.23);
+Console.WriteLine($"Вектор B в точке ({points.R};{points.Z}) равен ({fem.BrAtPoint(points)}, 0, {fem.BzAtPoint(points)}).");
+double res = fem.AbsBAtPoint(points);
+Console.WriteLine($"Значение B в точке ({points.R};{points.Z}) равно {res}.");
 
-//res = fem.YValueAtPoint(points);
-//Console.WriteLine($"Значение функции в точке ({points.X};{points.Y}) при t = {0.5} равно {res}.");
+res = fem.AbsHAtPoint(points);
+Console.WriteLine($"Значение H в точке ({points.R};{points.Z}) равно {res}.");
+
+points = new PointRZ(1.17, -0.41);
+Console.WriteLine($"Вектор B в точке ({points.R};{points.Z}) равен ({fem.BrAtPoint(points)}, 0, {fem.BzAtPoint(points)}).");
+res = fem.AbsBAtPoint(points);
+Console.WriteLine($"Значение B в точке ({points.R};{points.Z}) равно {res}.");
+
+res = fem.AbsHAtPoint(points);
+Console.WriteLine($"Значение H в точке ({points.R};{points.Z}) равно {res}.");

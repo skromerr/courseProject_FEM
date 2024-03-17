@@ -20,18 +20,18 @@ public class GridConverter
     public void ConvertGrid()
     {
         string[] data;
-        Point2D[] coords;
+        PointRZ[] coords;
         using StreamReader sr = new StreamReader(PathIn);
 
         sr.ReadLine();
         data = sr.ReadLine().Split(" ");
         var numCoords = Convert.ToInt32(data[0]);
-        coords = new Point2D[numCoords];
+        coords = new PointRZ[numCoords];
 
         for (int i = 0; i < numCoords; i++)
         {
             data = sr.ReadLine().Split("\t").Where(str => str != "").ToArray();
-            coords[i] = new Point2D(Convert.ToDouble(data[0]), Convert.ToDouble(data[1]));
+            coords[i] = new PointRZ(Convert.ToDouble(data[0]), Convert.ToDouble(data[1]));
         }
 
         List<int[]> Elements = new List<int[]>();
@@ -84,7 +84,7 @@ public class GridConverter
 
         sw.WriteLine(numCoords);
         for (int i = 0; i < numCoords; i++)
-            sw.WriteLine($"{coords[i].X} {coords[i].Y}");
+            sw.WriteLine($"{coords[i].R} {coords[i].Z}");
 
         sw.WriteLine(Elements.Count);
         for (int i = 0; i < Elements.Count; i++)
@@ -94,5 +94,20 @@ public class GridConverter
         for (int i = 0; i < Boundaries.Count; i++)
             sw.WriteLine($"{Boundaries[i][0]} {Boundaries[i][1]} {BoundTypes[Boundaries[i][2]]}");
         sw.Close();
+    }
+
+    public void MakeGrid(double Radius, double Height, double Width, double Current)
+    {
+        using StreamWriter sw = new StreamWriter(PathOut);
+        sw.WriteLine("1e-6 3");
+        sw.WriteLine($"{Radius - Width / 2} {Radius + Width / 2} {10.0 * Radius}");
+        sw.WriteLine("2 2 4");
+        sw.WriteLine("1.0 1.0 1.0");
+        sw.WriteLine($"0.0 {Current} 0.0");
+        sw.WriteLine($"{Radius * 10.0} 3");
+        sw.WriteLine($"{Height / 2} {-Height / 2} {-Radius * 10.0}");
+        sw.WriteLine("4 2 4");
+        sw.WriteLine("1.0 1.0 1.0");
+        sw.WriteLine("0.0 1.0 0.0");
     }
 }

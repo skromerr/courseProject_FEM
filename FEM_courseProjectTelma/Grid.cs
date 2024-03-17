@@ -1,14 +1,15 @@
 ﻿using System.Collections;
 using System.Drawing;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 
 namespace CourseProject;
 
-public class Element
+public class FiniteElement
 {
     public int[] Nodes { get; set; } = new int[6];
 
-    public int MaterialNumber { get; set; }
+    public double Current { get; set; }
 
     public int this[int i]
     {
@@ -16,78 +17,212 @@ public class Element
     }
 }
 
-public struct Material
-{
-   public double J { get; init; }
-   public string Name { get; init; }
-
-   public Material(double j, string name)
-   {
-      J = j;
-      Name = name;
-   }
-}
-
 public class Grid
 {
-   public List<Point2D> Nodes { get; set; }
-   public Element[] Elements { get; }
-   public Material[] Materials { get; }
-   public HashSet<(int, int[])>[] Boundaries { get; set; }
+   public List<PointRZ> Nodes { get; set; }
+   public FiniteElement[] Elements { get; }
+    public HashSet<FirstCondition> Boundary { get; init; }
+    public double R { get => _rPoints is null ? 0.001 : _rPoints[1]; }
+    public double r0 { get => _rPoints is null ? 0.001 : _rPoints[0]; }
 
-   public Grid(string spaceGridPath)
-   {
-      (int[], string)[] boundaries;
-      using (StreamReader sr = new (spaceGridPath))
-      {
-         string[] data;
-         data = sr.ReadLine()!.Split().ToArray();
-         Materials = new Material[Convert.ToInt32(data[0])];
+    private double[] _rPoints;
+    private int[] _rSteps;
+    private double[] _rCoefs;
+    private double[] _rCur;
 
-         for (int i = 0; i < Materials.Length; i++)
-         {
-            data = sr.ReadLine()!.Split(" ").ToArray();
-            Materials[i] = new Material(Convert.ToDouble(data[0]), data[1]);
-         }
+    private double[] _zPoints;
+    private int[] _zSteps;
+    private double[] _zCoefs;
+    private double[] _zCur;
 
-         data = sr.ReadLine()!.Split().ToArray();
-         var nodesCount = Convert.ToInt32(data[0]);
-         Nodes = new List<Point2D>();
-         for (int i = 0; i < nodesCount; i++)
-         {
-            data = sr.ReadLine()!.Split(" ").ToArray();
-            Nodes.Add(new Point2D(Convert.ToDouble(data[0]), Convert.ToDouble(data[1])));
-         }
+    public Grid(string spaceGridPath)
+    {
+        List<int[]> boundaries = new List<int[]>();
+        string[] data;
+        int rSplits, zSplits;
 
-         data = sr.ReadLine()!.Split().ToArray();
-         Elements = new Element[Convert.ToInt32(data[0])].Select(_ => new Element()).ToArray();
-         for (int i = 0; i < Elements.Length; i++)
-         {
-            data = sr.ReadLine()!.Split(" ").ToArray();
-            Elements[i][0] = Convert.ToInt32(data[0]);
-            Elements[i][1] = Convert.ToInt32(data[1]);
-            Elements[i][2] = Convert.ToInt32(data[2]);
-            Elements[i].MaterialNumber = Convert.ToInt32(data[3]);
-         }
+        // чтение данных из файла сетки
+        using (StreamReader sr = new(spaceGridPath))
+        {
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            rSplits = Convert.ToInt32(data[1]);
 
-         data = sr.ReadLine()!.Split().ToArray();
-         boundaries = new (int[], string)[int.Parse(data[0])];
-         for (int i = 0; i < boundaries.Length; i++)
-         {
-            boundaries[i].Item1 = new int[3];
-            data = sr.ReadLine()!.Split(" ").ToArray();
-            boundaries[i].Item1[0] = Convert.ToInt32(data[0]);
-            boundaries[i].Item1[2] = Convert.ToInt32(data[1]);
-            boundaries[i].Item2 = data[2];
-         }
-      }
+            _rPoints = new double[rSplits + 1];
+            _rPoints[0] = Convert.ToDouble(data[0]);
+            _rSteps = new int[rSplits];
+            _rCoefs = new double[rSplits];
+            _rCur = new double[rSplits];
 
-      Boundaries = new HashSet<(int, int[])>[4].Select(_ => new HashSet<(int, int[])>()).ToArray();
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < rSplits; i++)
+            {
+                _rPoints[i + 1] = Convert.ToDouble(data[i]);
+            }
 
-      NumberNodes(boundaries);
-   }
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < rSplits; i++)
+            {
+                _rSteps[i] = Convert.ToInt32(data[i]);
+            }
 
-   private void NumberNodes((int[], string)[] boudnaries)
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < rSplits; i++)
+            {
+                _rCoefs[i] = Convert.ToDouble(data[i]);
+            }
+
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < rSplits; i++)
+            {
+                _rCur[i] = Convert.ToDouble(data[i]);
+            }
+
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            zSplits = Convert.ToInt32(data[1]);
+
+            _zPoints = new double[zSplits + 1];
+            _zPoints[0] = Convert.ToDouble(data[0]);
+            _zSteps = new int[zSplits];
+            _zCoefs = new double[zSplits];
+            _zCur = new double[zSplits];
+
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < zSplits; i++)
+            {
+                _zPoints[i + 1] = Convert.ToDouble(data[i]);
+            }
+
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < zSplits; i++)
+            {
+                _zSteps[i] = Convert.ToInt32(data[i]);
+            }
+
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < zSplits; i++)
+            {
+                _zCoefs[i] = Convert.ToDouble(data[i]);
+            }
+
+            data = sr.ReadLine()!.Split(" ").Where(str => str != "").ToArray();
+            for (int i = 0; i < rSplits; i++)
+            {
+                _zCur[i] = Convert.ToDouble(data[i]);
+            }
+        }
+
+        // Генерация сетки и глобальная нумерация узлов
+        var rUniq = new double[_rSteps.Sum() + 1];
+        var zUniq = new double[_zSteps.Sum() + 1];
+
+        rUniq[0] = _rPoints[0];
+        int ridx = 1;
+        for (int i = 0; i < rSplits; i++)
+        {
+            double sumCoef = 0;
+            for (int j = 0; j < _rSteps[i]; j++)
+            {
+                sumCoef += Math.Pow(_rCoefs[i], j);
+            }
+
+            double r_step = (_rPoints[i + 1] - _rPoints[i]) / sumCoef;
+
+            for (int j = 0; j < _rSteps[i] - 1; j++)
+            {
+                rUniq[ridx] = rUniq[ridx - 1] + r_step;
+                r_step *= _rCoefs[i];
+                ridx++;
+            }
+
+            rUniq[ridx++] = _rPoints[i + 1];
+        }
+
+        zUniq[0] = _zPoints[0];
+        int zidx = 1;
+        for (int i = 0; i < zSplits; i++)
+        {
+            double sumCoef = 0;
+            for (int j = 0; j < _zSteps[i]; j++)
+            {
+                sumCoef += Math.Pow(_zCoefs[i], j);
+            }
+
+            double z_step = (_zPoints[i + 1] - _zPoints[i]) / sumCoef;
+
+            for (int j = 0; j < _zSteps[i] - 1; j++)
+            {
+                zUniq[zidx] = zUniq[zidx - 1] + z_step;
+                z_step *= _zCoefs[i];
+                zidx++;
+            }
+
+            zUniq[zidx++] = _zPoints[i + 1];
+        }
+
+        Nodes = new List<PointRZ>();
+
+        for (int i = 0; i < zUniq.Length; i++)
+            for (int j = 0; j < rUniq.Length; j++)
+                Nodes.Add(new(rUniq[j], zUniq[i]));
+
+
+        // генерация элементов
+        Elements = new FiniteElement[2 * (rUniq.Length - 1) * (zUniq.Length - 1)];
+
+        int elidx = 0;
+        zidx = 0;
+        int kidx = 0;
+        for (int i = 0; i < _zSteps.Length; i++)
+        {
+            for (int j = 0; j < _zSteps[i]; j++)
+            {
+                for (int k = 0; k < _rSteps.Length; k++)
+                {
+                    for (int m = 0; m < _rSteps[k]; m++)
+                    {
+                        Elements[elidx] = new();
+                        Elements[elidx].Nodes[0] = (zidx + 1) * rUniq.Length + kidx;
+                        Elements[elidx].Nodes[1] = (zidx + 1) * rUniq.Length + kidx + 1;
+                        Elements[elidx].Nodes[2] = zidx * rUniq.Length + kidx;
+                        Elements[elidx].Current = _rCur[k] * _zCur[i];
+                        elidx++;
+                        Elements[elidx] = new();
+                        Elements[elidx].Nodes[0] = (zidx + 1) * rUniq.Length + kidx + 1;
+                        Elements[elidx].Nodes[1] = zidx * rUniq.Length + kidx;
+                        Elements[elidx].Nodes[2] = zidx * rUniq.Length + kidx + 1;
+                        Elements[elidx].Current = _rCur[k] * _zCur[i];
+                        elidx++;
+                        kidx++;
+                    }
+                }
+                kidx = 0;
+                zidx++;
+            }
+        }
+
+        // указываем границы с краевыми условиями
+        Boundary = new HashSet<FirstCondition>();
+
+        // нижняя граница
+        for (int i = 1; i < rUniq.Length; i++)
+            boundaries.Add([Nodes.Count - i, 0, Nodes.Count - (i + 1)]);
+
+        // боковые границы
+        for (int i = 0; i < zUniq.Length - 1; i++)
+        {
+            //boundaries.Add([rUniq.Length * i, 0, rUniq.Length * (i + 1)]);  // левая
+            boundaries.Add([rUniq.Length * (i + 1) - 1, 0, rUniq.Length * (i + 2) - 1]);  // правая
+        }
+
+        // верхняя граница
+        for (int i = 0; i < rUniq.Length - 1; i++)
+            boundaries.Add([i, 0, i + 1]);
+
+
+        NumberNodes(boundaries);
+    }
+
+   private void NumberNodes(List<int[]> boudnaries)
    {
       Dictionary<(int,int), (int,int)> hashtable = new Dictionary<(int, int), (int, int)>();
       (int, int) pointInfo;
@@ -120,30 +255,19 @@ public class Grid
 
       foreach (var edge in boudnaries)
       {
-         key[0] = (Math.Min(edge.Item1[0], edge.Item1[2]), Math.Max(edge.Item1[0], edge.Item1[2]));
+         key[0] = (Math.Min(edge[0], edge[2]), Math.Max(edge[0], edge[2]));
 
          if (hashtable.ContainsKey(key[0]))
          {
             pointInfo = hashtable[key[0]];
-            edge.Item1[1] = pointInfo.Item1;
-            Boundaries[getType(edge.Item2)].Add((pointInfo.Item2, edge.Item1));
+            edge[1] = pointInfo.Item1;
+                foreach (var node in edge)
+                    Boundary.Add(new(Nodes[node], node));
          }
          else
          {
             throw new Exception("Такая грань не была описана в элементах");
          }
-      }
-
-      int getType(string type)
-      {
-         return type switch
-         {
-            "Bottom" => 0,
-            "Right" => 1,
-            "Top" => 2,
-            "Left" => 3,
-            _ => 0,
-         };
       }
    }
 }

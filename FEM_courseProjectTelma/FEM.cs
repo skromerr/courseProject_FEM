@@ -1,19 +1,19 @@
-﻿namespace CourseProject;
+﻿using System.Numerics;
+
+namespace CourseProject;
 
 public class FEM
 {
     private Grid grid;
     private SparseMatrix globalMatrix;
-    private Vector globalVectorX;
-    private Vector globalVectorY;
-    private Vector solutionX;
-    private Vector solutionY;
+    private Vector globalVector;
+    private Vector solution;
     private Solver slae;
     private Matrix alphas;
     private Vector localVector;
     private Matrix stiffnessMatrix;
     private Matrix massMatrix;
-    private Point2D[] vertices;
+    private PointRZ[] vertices;
     private FirstCondition[] firstConditions;
     private SecondCondition[] secondConditions;
     private string condPath => "conditions.txt";
@@ -27,38 +27,8 @@ public class FEM
         localVector = new(6);
         slae = new Solver(1000, 1e-16);
 
-        vertices = new Point2D[3];
-        solutionX = new Vector(grid.Nodes.Count);
-        solutionY = new Vector(grid.Nodes.Count);
-
-        SetBoundaryConditions();
-    }
-
-    private void SetBoundaryConditions()
-    {
-        int[] cond = File.ReadAllText(condPath).Split(' ').Select(value => Convert.ToInt32(value)).ToArray();
-        int i;
-        HashSet<int> fstCond = new HashSet<int>();
-        HashSet<(int, int, int[])> sndCond = new HashSet<(int, int, int[])>();
-        for (i = 0; i < 4; i++)
-        {
-            foreach (var edge in grid.Boundaries[i])
-                if (cond[i] == 1)
-                    foreach (var node in edge.Item2)
-                        fstCond.Add(node);
-                else
-                    sndCond.Add((edge.Item1, i, edge.Item2));
-        }
-
-        firstConditions = new FirstCondition[fstCond.Count];
-        i = 0;
-        foreach (var node in fstCond)
-            firstConditions[i++] = new(grid.Nodes[node], node);
-
-        secondConditions = new SecondCondition[sndCond.Count];
-        i = 0;
-        foreach (var edge in sndCond)
-            secondConditions[i++] = new(edge.Item1, edge.Item2, edge.Item3);
+        vertices = new PointRZ[3];
+        solution = new Vector(grid.Nodes.Count);
     }
 
     public void Compute()
@@ -71,25 +41,21 @@ public class FEM
         //AccountSecondConditions();
         AccountFirstConditions();
 
-        slae.SetSLAE(globalVectorX, globalMatrix);
+        slae.SetSLAE(globalVector, globalMatrix);
         slae.CGM();
-        Vector.Copy(slae.solution, solutionX);
+        Vector.Copy(slae.solution, solution);
 
-        slae.SetSLAE(globalVectorY, globalMatrix);
-        slae.CGM();
-        Vector.Copy(slae.solution, solutionY);
     }
 
     public void AccountFirstConditions()
     {
-        foreach (var fc in firstConditions)
+        foreach (var fc in grid.Boundary)
         {
             globalMatrix.Di[fc.NodeNumber] = 1;
-            globalVectorX[fc.NodeNumber] = 0;
-            globalVectorY[fc.NodeNumber] = 0;
+            globalVector[fc.NodeNumber] = 0;
             for (int i = globalMatrix.Ig[fc.NodeNumber]; i < globalMatrix.Ig[fc.NodeNumber + 1]; i++)
             {
-                globalVectorX[globalMatrix.Jg[i]] -= 0;
+                globalVector[globalMatrix.Jg[i]] -= 0;
                 globalMatrix.Gg[i] = 0;
             }
             for (int i = fc.NodeNumber + 1; i < globalMatrix.Size; i++)
@@ -98,7 +64,7 @@ public class FEM
                 {
                     if (globalMatrix.Jg[j] == fc.NodeNumber)
                     {
-                        globalVectorX[i] -= 0;
+                        globalVector[i] -= 0;
                         globalMatrix.Gg[j] = 0;
                     }
                 }
@@ -163,8 +129,7 @@ public class FEM
         int count = list.Sum(childList => childList.Count);
 
         globalMatrix = new(grid.Nodes.Count, count);
-        globalVectorX = new(grid.Nodes.Count);
-        globalVectorY = new(grid.Nodes.Count);
+        globalVector = new(grid.Nodes.Count);
 
         globalMatrix.Ig[0] = 0;
 
@@ -204,8 +169,7 @@ public class FEM
     {
 
         globalMatrix.Clear();
-        globalVectorX.Fill(0);
-        globalVectorY.Fill(0);
+        globalVector.Fill(0);
 
         for (int ielem = 0; ielem < grid.Elements.Length; ielem++)
         {
@@ -214,6 +178,8 @@ public class FEM
             vertices[2] = grid.Nodes[grid.Elements[ielem][2]];
 
             AssemblyLocalMatrixes();
+
+            stiffnessMatrix = 1 / PhysicsConstants.VacuumPermeability * (stiffnessMatrix + massMatrix);
 
             for (int i = 0; i < 6; i++)
                 for (int j = 0; j < 6; j++)
@@ -233,7 +199,7 @@ public class FEM
     {
         for (int i = 0; i < 6; i++)
         {
-            double psi(Point2D point)
+            double psi(PointRZ point)
                 => GetPsi(point, i);
             localVector[i] = GaussTriangle(psi);
         }
@@ -243,17 +209,14 @@ public class FEM
 
     private void AddElementToVector(int ielem)
     {
-        double J = grid.Materials[grid.Elements[ielem].MaterialNumber].J;
-        double Jx = J;
-        double Jy = J;
+        double J = grid.Elements[ielem].Current;
         for (int i = 0; i < 6; i++)
         {
-            globalVectorX[grid.Elements[ielem][i]] += Jx * localVector[i];
-            globalVectorY[grid.Elements[ielem][i]] += Jy * localVector[i];
+            globalVector[grid.Elements[ielem][i]] += J * localVector[i];
         }
     }
 
-    private double GaussTriangle(Func<Point2D, double> func)
+    private double GaussTriangle(Func<PointRZ, double> func)
     {
 
         const double x1a = 0.873821971016996;
@@ -273,9 +236,9 @@ public class FEM
 
         for (int i = 0; i < w.Length; i++)
         {
-            Point2D point = new();
-            point.X = (1 - p1[i] - p2[i]) * vertices[0].X + p1[i] * vertices[1].X + p2[i] * vertices[2].X;
-            point.Y = (1 - p1[i] - p2[i]) * vertices[0].Y + p1[i] * vertices[1].Y + p2[i] * vertices[2].Y;
+            PointRZ point = new();
+            point.R = (1 - p1[i] - p2[i]) * vertices[0].R + p1[i] * vertices[1].R + p2[i] * vertices[2].R;
+            point.Z = (1 - p1[i] - p2[i]) * vertices[0].Z + p1[i] * vertices[1].Z + p2[i] * vertices[2].Z;
 
             res += func(point) * w[i];
         }
@@ -314,24 +277,24 @@ public class FEM
     //}
 
     private double DeterminantD()
-         => (vertices[1].X - vertices[0].X) * (vertices[2].Y - vertices[0].Y) -
-            (vertices[2].X - vertices[0].X) * (vertices[1].Y - vertices[0].Y);
+         => (vertices[1].R - vertices[0].R) * (vertices[2].Z - vertices[0].Z) -
+            (vertices[2].R - vertices[0].R) * (vertices[1].Z - vertices[0].Z);
 
     private void CalcuclateAlphas()
     {
         double dD = DeterminantD();
 
-        alphas[0, 0] = (vertices[1].X * vertices[2].Y - vertices[2].X * vertices[1].Y) / dD;
-        alphas[0, 1] = (vertices[1].Y - vertices[2].Y) / dD;
-        alphas[0, 2] = (vertices[2].X - vertices[1].X) / dD;
+        alphas[0, 0] = (vertices[1].R * vertices[2].Z - vertices[2].R * vertices[1].Z) / dD;
+        alphas[0, 1] = (vertices[1].Z - vertices[2].Z) / dD;
+        alphas[0, 2] = (vertices[2].R - vertices[1].R) / dD;
 
-        alphas[1, 0] = (vertices[2].X * vertices[0].Y - vertices[0].X * vertices[2].Y) / dD;
-        alphas[1, 1] = (vertices[2].Y - vertices[0].Y) / dD;
-        alphas[1, 2] = (vertices[0].X - vertices[2].X) / dD;
+        alphas[1, 0] = (vertices[2].R * vertices[0].Z - vertices[0].R * vertices[2].Z) / dD;
+        alphas[1, 1] = (vertices[2].Z - vertices[0].Z) / dD;
+        alphas[1, 2] = (vertices[0].R - vertices[2].R) / dD;
 
-        alphas[2, 0] = (vertices[0].X * vertices[1].Y - vertices[1].X * vertices[0].Y) / dD;
-        alphas[2, 1] = (vertices[0].Y - vertices[1].Y) / dD;
-        alphas[2, 2] = (vertices[1].X - vertices[0].X) / dD;
+        alphas[2, 0] = (vertices[0].R * vertices[1].Z - vertices[1].R * vertices[0].Z) / dD;
+        alphas[2, 1] = (vertices[0].Z - vertices[1].Z) / dD;
+        alphas[2, 2] = (vertices[1].R - vertices[0].R) / dD;
     }
 
     private void AssemblyLocalMatrixes()
@@ -341,23 +304,26 @@ public class FEM
         for (int i = 0; i < stiffnessMatrix.Size; i++)
             for (int j = 0; j <= i; j++)
             {
-                double gradGradFunc(Point2D point)
-                    => GetDpsiDx(point, i) * GetDpsiDx(point, j) + GetDpsiDy(point, i) * GetDpsiDy(point, j);
+                double gradGradFunc(PointRZ point)
+                    => (GetDpsiDx(point, i) * GetDpsiDx(point, j) + GetDpsiDy(point, i) * GetDpsiDy(point, j)) * point.R;
                 stiffnessMatrix[i, j] = stiffnessMatrix[j, i] = GaussTriangle(gradGradFunc);
+
+                double massFunc(PointRZ point)
+                    => GetPsi(point, i) * GetPsi(point, j) / point.R;
             }
         stiffnessMatrix = dD * stiffnessMatrix;
     }
 
-    private (double, double, double) getL(Point2D point)
+    private (double, double, double) getL(PointRZ point)
     {
-        double l1 = alphas[0, 0] + alphas[0, 1] * point.X + alphas[0, 2] * point.Y;
-        double l2 = alphas[1, 0] + alphas[1, 1] * point.X + alphas[1, 2] * point.Y;
-        double l3 = alphas[2, 0] + alphas[2, 1] * point.X + alphas[2, 2] * point.Y;
+        double l1 = alphas[0, 0] + alphas[0, 1] * point.R + alphas[0, 2] * point.Z;
+        double l2 = alphas[1, 0] + alphas[1, 1] * point.R + alphas[1, 2] * point.Z;
+        double l3 = alphas[2, 0] + alphas[2, 1] * point.R + alphas[2, 2] * point.Z;
 
         return (l1, l2, l3);
     }
 
-    private double GetPsi(Point2D point, int numPsi)
+    private double GetPsi(PointRZ point, int numPsi)
     {
         (var l1, var l2, var l3) = getL(point);
 
@@ -380,11 +346,11 @@ public class FEM
         }
     }
 
-    private double GetDpsiDx(Point2D point, int numPsi)
+    private double GetDpsiDx(PointRZ point, int numPsi)
     {
-        double l1 = alphas[0, 0] + alphas[0, 1] * point.X + alphas[0, 2] * point.Y;
-        double l2 = alphas[1, 0] + alphas[1, 1] * point.X + alphas[1, 2] * point.Y;
-        double l3 = alphas[2, 0] + alphas[2, 1] * point.X + alphas[2, 2] * point.Y;
+        double l1 = alphas[0, 0] + alphas[0, 1] * point.R + alphas[0, 2] * point.Z;
+        double l2 = alphas[1, 0] + alphas[1, 1] * point.R + alphas[1, 2] * point.Z;
+        double l3 = alphas[2, 0] + alphas[2, 1] * point.R + alphas[2, 2] * point.Z;
 
         switch (numPsi)
         {
@@ -405,11 +371,11 @@ public class FEM
         }
     }
 
-    private double GetDpsiDy(Point2D point, int numPsi)
+    private double GetDpsiDy(PointRZ point, int numPsi)
     {
-        double l1 = alphas[0, 0] + alphas[0, 1] * point.X + alphas[0, 2] * point.Y;
-        double l2 = alphas[1, 0] + alphas[1, 1] * point.X + alphas[1, 2] * point.Y;
-        double l3 = alphas[2, 0] + alphas[2, 1] * point.X + alphas[2, 2] * point.Y;
+        double l1 = alphas[0, 0] + alphas[0, 1] * point.R + alphas[0, 2] * point.Z;
+        double l2 = alphas[1, 0] + alphas[1, 1] * point.R + alphas[1, 2] * point.Z;
+        double l3 = alphas[2, 0] + alphas[2, 1] * point.R + alphas[2, 2] * point.Z;
 
         switch (numPsi)
         {
@@ -430,7 +396,7 @@ public class FEM
         }
     }
 
-    private int FindElement(Point2D point)
+    private int FindElement(PointRZ point)
     {
         for (int ielem = 0; ielem < grid.Elements.Length; ielem++)
         {
@@ -438,14 +404,14 @@ public class FEM
             vertices[1] = grid.Nodes[grid.Elements[ielem][1]];
             vertices[2] = grid.Nodes[grid.Elements[ielem][2]];
 
-            double s01 = Math.Abs((vertices[1].X - vertices[0].X) * (point.Y - vertices[0].Y) -
-                     (point.X - vertices[0].X) * (vertices[1].Y - vertices[0].Y));
+            double s01 = Math.Abs((vertices[1].R - vertices[0].R) * (point.Z - vertices[0].Z) -
+                     (point.R - vertices[0].R) * (vertices[1].Z - vertices[0].Z));
 
-            double s12 = Math.Abs((vertices[2].X - vertices[1].X) * (point.Y - vertices[1].Y) -
-                     (point.X - vertices[1].X) * (vertices[2].Y - vertices[1].Y));
+            double s12 = Math.Abs((vertices[2].R - vertices[1].R) * (point.Z - vertices[1].Z) -
+                     (point.R - vertices[1].R) * (vertices[2].Z - vertices[1].Z));
 
-            double s20 = Math.Abs((vertices[0].X - vertices[2].X) * (point.Y - vertices[2].Y) -
-                     (point.X - vertices[2].X) * (vertices[0].Y - vertices[2].Y));
+            double s20 = Math.Abs((vertices[0].R - vertices[2].R) * (point.Z - vertices[2].Z) -
+                     (point.R - vertices[2].R) * (vertices[0].Z - vertices[2].Z));
 
             double dD = Math.Abs(DeterminantD());
 
@@ -455,7 +421,7 @@ public class FEM
         return -1;
     }
 
-    public double XValueAtPoint(Point2D point)
+    public double AphiAtPoint(PointRZ point)
     {
         double res = 0;
 
@@ -466,26 +432,28 @@ public class FEM
             CalcuclateAlphas();
             for (int i = 0; i < 6; i++)
             {
-                res += solutionX[grid.Elements[ielem][i]] * GetPsi(point, i);
+                res += solution[grid.Elements[ielem][i]] * GetPsi(point, i);
             }
         }
         return res;
     }
-
-    public double YValueAtPoint(Point2D point)
+    public double BzAtPoint(PointRZ point)
     {
-        double res = 0;
+        double hx = 1e-7;
 
-        int ielem = FindElement(point);
-
-        if (ielem != -1)
-        {
-            CalcuclateAlphas();
-            for (int i = 0; i < 6; i++)
-            {
-                res += solutionY[grid.Elements[ielem][i]] * GetPsi(point, i);
-            }
-        }
-        return res;
+        return ((point + new PointRZ(hx, 0)).R * AphiAtPoint(point + new PointRZ(hx, 0)) - (point - new PointRZ(hx, 0)).R * AphiAtPoint(point - new PointRZ(hx, 0))) / (2.0 * hx * point.R);
     }
+
+    public double BrAtPoint(PointRZ point)
+    {
+        double hy = 1e-7;
+
+        return -(AphiAtPoint(point + new PointRZ(0, hy)) - AphiAtPoint(point - new PointRZ(0, hy))) / (2.0 * hy);
+    }
+
+    public double AbsBAtPoint(PointRZ point)
+    => Math.Sqrt(Math.Pow(BrAtPoint(point), 2) + Math.Pow(BzAtPoint(point), 2));
+
+    public double AbsHAtPoint(PointRZ point)
+        => AbsBAtPoint(point) * PhysicsConstants.VacuumPermeability;
 }
