@@ -25,7 +25,7 @@ public class FEM
         stiffnessMatrix = new(6);
         massMatrix = new(6);
         localVector = new(6);
-        slae = new Solver(1000, 1e-16);
+        slae = new Solver(10000, 1e-14);
 
         vertices = new PointRZ[3];
         solution = new Vector(grid.Nodes.Count);
@@ -310,8 +310,10 @@ public class FEM
 
                 double massFunc(PointRZ point)
                     => GetPsi(point, i) * GetPsi(point, j) / point.R;
+                massMatrix[i, j] = massMatrix[j, i] = GaussTriangle(massFunc);
             }
         stiffnessMatrix = dD * stiffnessMatrix;
+        massMatrix = dD * massMatrix;
     }
 
     private (double, double, double) getL(PointRZ point)

@@ -96,17 +96,17 @@ public class GridConverter
         sw.Close();
     }
 
-    public void MakeGrid(double Radius, double Height, double Width, double Current)
+    public void MakeGrid(double Radius, double Height, double Width, double Current, int x, double bak)
     {
         using StreamWriter sw = new StreamWriter(PathOut);
         sw.WriteLine("1e-6 3");
-        sw.WriteLine($"{Radius - Width / 2} {Radius + Width / 2} {10.0 * Radius}");
-        sw.WriteLine("2 2 4");
+        sw.WriteLine($"{Radius - Width / 2} {Radius + Width / 2} {bak + Radius}");
+        sw.WriteLine($"{2 * x} {2 * x} {4 * x}");
         sw.WriteLine("1.0 1.0 1.0");
         sw.WriteLine($"0.0 {Current} 0.0");
-        sw.WriteLine($"{Radius * 10.0} 3");
-        sw.WriteLine($"{Height / 2} {-Height / 2} {-Radius * 10.0}");
-        sw.WriteLine("4 2 4");
+        sw.WriteLine($"{Radius + bak} 3");
+        sw.WriteLine($"{Height / 2} {-Height / 2} {-Radius - bak}");
+        sw.WriteLine($"{4 * x} {2 * x} {4 * x}");
         sw.WriteLine("1.0 1.0 1.0");
         sw.WriteLine("0.0 1.0 0.0");
     }
