@@ -165,7 +165,7 @@ public class Grid
             for (int j = 0; j < rUniq.Length; j++)
                 Nodes.Add(new(rUniq[j], zUniq[i]));
 
-
+        Console.WriteLine(Nodes.Count);
         // генерация элементов
         Elements = new FiniteElement[2 * (rUniq.Length - 1) * (zUniq.Length - 1)];
 

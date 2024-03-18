@@ -14,9 +14,6 @@ public class FEM
     private Matrix stiffnessMatrix;
     private Matrix massMatrix;
     private PointRZ[] vertices;
-    private FirstCondition[] firstConditions;
-    private SecondCondition[] secondConditions;
-    private string condPath => "conditions.txt";
 
     public FEM(Grid grid)
     {
@@ -25,7 +22,7 @@ public class FEM
         stiffnessMatrix = new(6);
         massMatrix = new(6);
         localVector = new(6);
-        slae = new Solver(10000, 1e-14);
+        slae = new Solver(10000, 1e-15);
 
         vertices = new PointRZ[3];
         solution = new Vector(grid.Nodes.Count);
@@ -185,7 +182,7 @@ public class FEM
                 for (int j = 0; j < 6; j++)
                     AddElement(grid.Elements[ielem][i], grid.Elements[ielem][j], stiffnessMatrix[i, j]);
 
-            AssemblyLocallVector(ielem);
+            AssemblyLocallVector();
 
             AddElementToVector(ielem);
 
@@ -195,12 +192,12 @@ public class FEM
         }
     }
 
-    void AssemblyLocallVector(int ielem)
+    void AssemblyLocallVector()
     {
         for (int i = 0; i < 6; i++)
         {
             double psi(PointRZ point)
-                => GetPsi(point, i);
+                => GetPsi(point, i) * point.R;
             localVector[i] = GaussTriangle(psi);
         }
 
@@ -243,7 +240,7 @@ public class FEM
             res += func(point) * w[i];
         }
 
-        return res * 0.5;
+        return res /** 0.5*/;
     }
 
     //private double GaussEdge(int numberPsi, Func<PointRZ, double, int, double> theta, int funcNum, PointRZ fstPoint, PointRZ sndPoint)
@@ -458,4 +455,18 @@ public class FEM
 
     public double AbsHAtPoint(PointRZ point)
         => AbsBAtPoint(point) * PhysicsConstants.VacuumPermeability;
+
+    public void PrintSolution(string fileName)
+    {
+        using StreamWriter sw = new StreamWriter(fileName);
+        for (int i = 0; i < solution.Length; i++)
+            sw.WriteLine(solution[i]);
+    }
+
+    public void ReadSolutionFromFile(string fileName)
+    {
+        using StreamReader sr = new StreamReader(fileName);
+        for (int i = 0; i < solution.Length; i++)
+            solution[i] = Convert.ToDouble(sr.ReadLine());
+    }
 }
