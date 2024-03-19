@@ -22,7 +22,7 @@ public class FEM
         stiffnessMatrix = new(6);
         massMatrix = new(6);
         localVector = new(6);
-        slae = new Solver(10000, 1e-15);
+        slae = new Solver();
 
         vertices = new PointRZ[3];
         solution = new Vector(grid.Nodes.Count);
@@ -30,7 +30,6 @@ public class FEM
 
     public void Compute()
     {
-
         BuildPortrait();
 
 
@@ -41,8 +40,10 @@ public class FEM
         slae.SetSLAE(globalVector, globalMatrix);
         slae.CGM();
         Vector.Copy(slae.solution, solution);
-
     }
+
+    public void SetSlaeParametres(int maxIter, double eps)
+        => slae.SetParametres(maxIter, eps);
 
     public void AccountFirstConditions()
     {

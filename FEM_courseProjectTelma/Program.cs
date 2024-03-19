@@ -4,7 +4,7 @@ Thread.CurrentThread.CurrentCulture = new System.Globalization.CultureInfo("en-U
 
 string spaceGridPath = "grid.txt";
 string telmaGridTxt = "test.txt";
-string resultPath = "solution.txt";
+
 GridConverter gc = new GridConverter(telmaGridTxt, spaceGridPath);
 double radius = 1;
 double height = 0.1;
@@ -12,54 +12,76 @@ double width = 0.1;
 double current = 1e7;
 int xDroblenie = 32;
 double bak = 10;
+string resultPath = $"solution{xDroblenie}.txt";
 
 gc.MakeGrid(radius, height, width, current, xDroblenie, bak);
 Grid grid = new(spaceGridPath);
-Console.WriteLine($"Сетка построена. Количество элементов - {grid.Elements.Length}. Количество узлов - {grid.Nodes.Count}.");
+using (StreamWriter sw = new("log.txt", true))
+{
+    Console.WriteLine($"Сетка построена. Количество элементов - {grid.Elements.Length}. Количество узлов - {grid.Nodes.Count}.");
+    sw.WriteLine($"Сетка построена. Количество элементов - {grid.Elements.Length}. Количество узлов - {grid.Nodes.Count}.");
 
-FEM fem = new(grid);
+    FEM fem = new(grid);
+    fem.SetSlaeParametres(50000, 1e-15);
 
+    fem.Compute();
+    fem.PrintSolution(resultPath);
 
-fem.Compute();
-fem.PrintSolution(resultPath);
+    //fem.ReadSolutionFromFile(resultPath);
 
-//fem.ReadSolutionFromFile(resultPath);
+    Console.WriteLine("Впишите координаты точки, в которой хотите просмотреть значение. Формат: double double");
 
-Console.WriteLine("-----------------------------------------------------------------------------------------------------");
-PointRZ point = new PointRZ(0.7, 0.23);
-Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {fem.AphiAtPoint(point)}.");
-Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({fem.BrAtPoint(point)}, 0, {fem.BzAtPoint(point)}).");
-double res = fem.AbsBAtPoint(point);
-Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
-res = fem.AbsHAtPoint(point);
-Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
+    string data;
+    while ((data = Console.ReadLine()) != "0")
+    {
+        Console.WriteLine("-----------------------------------------------------------------------------------------------------");
+        sw.WriteLine("-----------------------------------------------------------------------------------------------------");
+        double[] values = data.Split(" ").Where(str => str != "").Select(Convert.ToDouble).ToArray();
+        PointRZ point = new PointRZ(values[0], values[1]);
+        double res = fem.AphiAtPoint(point);
+        Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {res}.");
+        sw.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {res}.");
+        double res2 = fem.BzAtPoint(point);
+        res = fem.BrAtPoint(point);
+        Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({res}, 0, {res2}).");
+        sw.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({res}, 0, {res2}).");
+        res = fem.AbsBAtPoint(point);
+        Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
+        sw.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
+        res = fem.AbsHAtPoint(point);
+        Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
+        sw.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
+        Console.WriteLine("-----------------------------------------------------------------------------------------------------");
+        sw.WriteLine("-----------------------------------------------------------------------------------------------------");
+    }
 
-Console.WriteLine("-----------------------------------------------------------------------------------------------------");
-point = new PointRZ(0.7, -0.23);
-Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {fem.AphiAtPoint(point)}.");
-Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({fem.BrAtPoint(point)}, 0, {fem.BzAtPoint(point)}).");
-res = fem.AbsBAtPoint(point);
-Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
-res = fem.AbsHAtPoint(point);
-Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
+}
+//Console.WriteLine("-----------------------------------------------------------------------------------------------------");
+//point = new PointRZ(0.7, -0.23);
+//Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {fem.AphiAtPoint(point)}.");
+//Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({fem.BrAtPoint(point)}, 0, {fem.BzAtPoint(point)}).");
+//res = fem.AbsBAtPoint(point);
+//Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
+//res = fem.AbsHAtPoint(point);
+//Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
 
-Console.WriteLine("------------------------------------------------------------------------------------------------------");
-point = new PointRZ(1.17, -0.41);
-Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {fem.AphiAtPoint(point)}.");
-Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({fem.BrAtPoint(point)}, 0, {fem.BzAtPoint(point)}).");
-res = fem.AbsBAtPoint(point);
-Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
-res = fem.AbsHAtPoint(point);
-Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
+//Console.WriteLine("------------------------------------------------------------------------------------------------------");
+//point = new PointRZ(1.17, -0.41);
+//Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {fem.AphiAtPoint(point)}.");
+//Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({fem.BrAtPoint(point)}, 0, {fem.BzAtPoint(point)}).");
+//res = fem.AbsBAtPoint(point);
+//Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
+//res = fem.AbsHAtPoint(point);
+//Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
 
-Console.WriteLine("-------------------------------------------------------------------------------------------------------");
-point = new PointRZ(1.46, 0.0);
-Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {fem.AphiAtPoint(point)}.");
-Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({fem.BrAtPoint(point)}, 0, {fem.BzAtPoint(point)}).");
-res = fem.AbsBAtPoint(point);
-Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
-res = fem.AbsHAtPoint(point);
-Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
+//Console.WriteLine("-------------------------------------------------------------------------------------------------------");
+//point = new PointRZ(1.46, 0.0);
+//Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {fem.AphiAtPoint(point)}.");
+//Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({fem.BrAtPoint(point)}, 0, {fem.BzAtPoint(point)}).");
+//res = fem.AbsBAtPoint(point);
+//Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
+//res = fem.AbsHAtPoint(point);
+//Console.WriteLine($"Значение H в точке ({point.R};{point.Z}) равно {res}.");
 
 //Console.WriteLine(GaussTriangle(ed, [new(0.0, 0.0), new(1.0, 2.0), new(1.0, 0.0)]));
 

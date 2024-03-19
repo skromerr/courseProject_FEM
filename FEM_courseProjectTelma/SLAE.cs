@@ -2,67 +2,67 @@
 
 public class Solver
 {
-   private SparseMatrix matrix = default!;
-   private Vector vector = default!;
-   public Vector solution = default!;
-   private double eps;
-   private int maxIter;
+    private SparseMatrix matrix = default!;
+    private Vector vector = default!;
+    public Vector solution = default!;
+    private double eps = 1e-14;
+    private int maxIter = 10000;
 
-   public Solver(int maxIter, double eps)
-   {
-      this.eps = eps;
-      this.maxIter = maxIter;
-   }
+    public void SetParametres(int maxIter, double eps)
+    {
+        this.eps = eps;
+        this.maxIter = maxIter;
+    }
 
-   public void SetSLAE(Vector vector, SparseMatrix matrix) 
-   {
-      this.vector = vector;
-      this.matrix = matrix;
-   }
+    public void SetSLAE(Vector vector, SparseMatrix matrix)
+    {
+        this.vector = vector;
+        this.matrix = matrix;
+    }
 
-   public void CGM()
-   {
-      try
-      {
-         ArgumentNullException.ThrowIfNull(matrix, $"{nameof(matrix)} cant be NULL.");
-         ArgumentNullException.ThrowIfNull(vector, $"{nameof(vector)} cant be NULL.");
-      }
-      catch(Exception ex)
-      {
-         Console.WriteLine(ex.Message);
+    public void CGM()
+    {
+        try
+        {
+            ArgumentNullException.ThrowIfNull(matrix, $"{nameof(matrix)} cant be NULL.");
+            ArgumentNullException.ThrowIfNull(vector, $"{nameof(vector)} cant be NULL.");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
             return;
-      }
+        }
 
-      double vectorNorm = vector.Norm();
+        double vectorNorm = vector.Norm();
 
-      solution = new(vector.Length);
-      Vector z = new(vector.Length);
+        solution = new(vector.Length);
+        Vector z = new(vector.Length);
 
-      Vector r = vector - matrix * solution;
-      Vector.Copy(r, z);
+        Vector r = vector - matrix * solution;
+        Vector.Copy(r, z);
 
-      int iter;
+        int iter;
 
-      for (iter = 0; iter < maxIter && r.Norm() / vectorNorm >= eps; iter++)
-      {
-         var tmp = matrix * z;
-         var alpha = r * r / (tmp * z);
-         solution += alpha * z;
-         var squareNorm = r * r;
-         r -= alpha * tmp;
-         var beta = r * r / squareNorm;
-         z = r + beta * z;
-      }
+        for (iter = 0; iter < maxIter && r.Norm() / vectorNorm >= eps; iter++)
+        {
+            var tmp = matrix * z;
+            var alpha = r * r / (tmp * z);
+            solution += alpha * z;
+            var squareNorm = r * r;
+            r -= alpha * tmp;
+            var beta = r * r / squareNorm;
+            z = r + beta * z;
+        }
 
         Console.WriteLine($"Last iteration - {iter}\n" +
            $"Residual norm - {r.Norm() / vectorNorm}\n Eps - {eps}");
     }
 
-   public void PrintSolution()
-   {
-      for(int i = 0; i < solution.Length; i++)
-      {
-         Console.WriteLine(solution[i]);
-      }
-   }
+    public void PrintSolution()
+    {
+        for (int i = 0; i < solution.Length; i++)
+        {
+            Console.WriteLine(solution[i]);
+        }
+    }
 }
