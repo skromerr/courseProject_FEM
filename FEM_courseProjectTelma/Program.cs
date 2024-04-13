@@ -10,7 +10,7 @@ double radius = 1;
 double height = 0.1;
 double width = 0.1;
 double current = 1e7;
-int xDroblenie = 32;
+int xDroblenie = 8;
 double bak = 10;
 string resultPath = $"solution{xDroblenie}.txt";
 
@@ -24,10 +24,10 @@ using (StreamWriter sw = new("log.txt", true))
     FEM fem = new(grid);
     fem.SetSlaeParametres(50000, 1e-15);
 
-    fem.Compute();
-    fem.PrintSolution(resultPath);
+    //fem.Compute();
+    //fem.PrintSolution(resultPath);
 
-    //fem.ReadSolutionFromFile(resultPath);
+    fem.ReadSolutionFromFile(resultPath);
 
     Console.WriteLine("Впишите координаты точки, в которой хотите просмотреть значение. Формат: double double");
 
@@ -39,12 +39,12 @@ using (StreamWriter sw = new("log.txt", true))
         double[] values = data.Split(" ").Where(str => str != "").Select(Convert.ToDouble).ToArray();
         PointRZ point = new PointRZ(values[0], values[1]);
         double res = fem.AphiAtPoint(point);
-        Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {res}.");
-        sw.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {res}.");
+        Console.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {res:E4}.");
+        sw.WriteLine($"Значение компоненты Aphi в точке ({point.R};{point.Z}) равно {res:E4}.");
         double res2 = fem.BzAtPoint(point);
         res = fem.BrAtPoint(point);
-        Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({res}, 0, {res2}).");
-        sw.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({res}, 0, {res2}).");
+        Console.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({res:E4}, 0, {res2:E4}).");
+        sw.WriteLine($"Вектор B в точке ({point.R};{point.Z}) равен ({res:E4}, 0, {res2:E4}).");
         res = fem.AbsBAtPoint(point);
         Console.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
         sw.WriteLine($"Значение B в точке ({point.R};{point.Z}) равно {res}.");
